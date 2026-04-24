@@ -70,20 +70,17 @@ class SQLiteStore:
             )
 
     def append_record(self, record: DurableRecord) -> None:
-        payload = json.dumps(record.payload_json, sort_keys=True)
-        lane_tags = json.dumps(record.lane_tags)
-        parent_ids = json.dumps(record.parent_record_ids)
-        supersedes = json.dumps(record.supersedes_record_ids)
-        content_hash = hashlib.sha256(record.canonical_text.encode("utf-8")).hexdigest()
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO durable_records (
-                    record_id, record_kind, created_at, source_type, source_ref,
-                    canonical_text, payload_json, lane_tags, trust_level, policy_status,
-                    parent_record_ids, supersedes_record_ids, trace_id, session_id, content_hash
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+        self.append_records([record])
+
+    def append_records(self, records: Iterable[DurableRecord]) -> None:
+        rows = []
+        for record in records:
+            payload = json.dumps(record.payload_json, sort_keys=True)
+            lane_tags = json.dumps(record.lane_tags)
+            parent_ids = json.dumps(record.parent_record_ids)
+            supersedes = json.dumps(record.supersedes_record_ids)
+            content_hash = hashlib.sha256(record.canonical_text.encode("utf-8")).hexdigest()
+            rows.append(
                 (
                     record.record_id,
                     record.record_kind,
@@ -100,7 +97,18 @@ class SQLiteStore:
                     record.trace_id,
                     record.session_id,
                     content_hash,
-                ),
+                )
+            )
+        with self._connect() as conn:
+            conn.executemany(
+                """
+                INSERT INTO durable_records (
+                    record_id, record_kind, created_at, source_type, source_ref,
+                    canonical_text, payload_json, lane_tags, trust_level, policy_status,
+                    parent_record_ids, supersedes_record_ids, trace_id, session_id, content_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows,
             )
 
     def append_session_event(self, session_id: str, trace_id: str, created_at: str, event_type: str, payload: dict) -> None:

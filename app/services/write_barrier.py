@@ -11,8 +11,5 @@ class WriteBarrier:
     def commit(self, records: list[DurableRecord], approved: bool) -> list[str]:
         if not approved:
             return []
-        committed: list[str] = []
-        for record in records:
-            self.store.append_record(record)
-            committed.append(record.record_id)
-        return committed
+        self.store.append_records(records)
+        return [record.record_id for record in records]

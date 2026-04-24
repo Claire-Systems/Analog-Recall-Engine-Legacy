@@ -44,7 +44,8 @@ def gyro() -> dict:
 @router.post("/prompt-prefix")
 def prompt_prefix(body: QueryBody) -> dict:
     result = engine.run_query(QueryRequest(query=body.query, session_id=body.session_id))
-    return {"trace_id": result["trace_id"], "visor": result["trace"]["events"][-2]}
+    execute_turn = next(event for event in result["trace"]["events"] if event["stage"] == "execute_turn")
+    return {"trace_id": result["trace_id"], "visor": execute_turn["payload"]["rail"]["controlled_context"]}
 
 
 @router.get("/trace/{trace_id}")
