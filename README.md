@@ -2,7 +2,7 @@
 
 Governed, append-only local memory runtime with deterministic intent classification, lane discipline, TrailLink provenance, and write-barrier controls.
 
-## Module Tree
+## Proposed Module Tree
 
 ```text
 app/
@@ -31,6 +31,7 @@ app/
   tracing/veritas.py
   main.py
 tests/test_turn_flow.py
+requirements.txt
 ```
 
 ## Durable Schema (Truth Spine)
@@ -40,6 +41,8 @@ SQLite tables:
 - `trail_edges` (TrailLink graph)
 - `session_events` (turn event log)
 - `session_state` (current snapshot)
+
+All durable record rows include record metadata such as `record_id`, `record_kind`, `created_at`, canonical payload fields, lane tags, policy status, parent/supersession links, and hash/trace/session identifiers.
 
 ## Turn Flow
 
@@ -56,3 +59,34 @@ SQLite tables:
 - `POST /prompt-prefix`
 - `GET /trace/{id}`
 - `GET /report/{id}`
+
+## Migration Plan From Legacy Runtime
+
+1. Keep externally useful API surface (`/health`, `/ingest`, `/query`, `/gyro`, tracing/report endpoints).
+2. Move canonical truth to SQLite append-only `durable_records` with write-barrier enforcement.
+3. Split session event/state from durable truth commits.
+4. Add deterministic intent/lane routing and relevance gating before recall-to-context handoff.
+5. Rebuild secondary artifacts in Gravel from Truth Spine + TrailLink + trace data.
+
+## Preserved vs Replaced
+
+Preserved:
+- FastAPI service boundary and endpoint style.
+- Gyro orientation concept and trace/report observability.
+- Prompt-prefix / visor envelope concept.
+
+Replaced:
+- JSONL-style authority assumptions with SQLite append-only authority.
+- Weak retrieval flow with lane-disciplined routing + relevance gate.
+- Uncontrolled memory writes with Sentinel/Lycanthrope mediated write barrier.
+
+## Run and Test
+
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+```bash
+pytest
+```
